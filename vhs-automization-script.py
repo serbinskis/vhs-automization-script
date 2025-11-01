@@ -10,7 +10,7 @@ import numpy as np
 import easyocr
 import warnings
 
-# --- ADDED: Filter the specific UserWarning from PyTorch ---
+# --- Filter the specific UserWarning from PyTorch ---
 warnings.filterwarnings("ignore", category=UserWarning, message=".*'pin_memory' argument is set as true*")
 
 # --- Configuration ---
@@ -21,6 +21,7 @@ SOURCE_NAME = "Video Capture Device"  # Must match your OBS source name
 CHECK_INTERVAL = 0.1           # Seconds between OCR checks
 CONFIRM_SECONDS = 0.1          # How many seconds the condition must be met.
 BLACK_SCREEN_CONFIRM_SECONDS = 15.0
+REWIND_TEXT = "REW"            # Usually happens after the end of the VHS tape
 
 # --- Crop area (x=60→160, y=100→150) ---
 CROP_BOX = (60, 100, 160, 150)  # (left, top, right, bottom)
@@ -71,7 +72,6 @@ def get_full_screenshot():
     except ValueError: encoded_data = base64_string
 
     img_data = base64.b64decode(encoded_data)
-    #return Image.open("C:/Users/User/Desktop/mpv-shot0001.jpg")
     return Image.open(io.BytesIO(img_data))
 
 def preprocess(img):
@@ -82,10 +82,10 @@ def preprocess(img):
     return img.filter(ImageFilter.MedianFilter(size=3))
 
 def contains_rew(img_np):
-    """Detect 'REW' text via EasyOCR."""
+    """Detect REWIND_TEXT text via EasyOCR."""
     results = reader.readtext(img_np, detail=1)
     all_text = ", ".join([text for (bbox, text, prob) in results])
-    return (all_text == "REW"), all_text
+    return (all_text == REWIND_TEXT), all_text
 
 def is_correct_background(img_np_color, target_colors, tolerance):
     """Checks if the average color of the image is close to ANY of the target colors."""
@@ -145,7 +145,7 @@ while True:
                 client.resume_record()
         # --- END MODIFIED LOGIC ---
 
-        # --- Final Pause & Exit Logic (Unchanged from your version) ---
+        # --- Final Pause & Exit Logic ---
         if text_is_present and background_color_match:
             if detection_start_time is None:
                 detection_start_time = time.time()
@@ -163,7 +163,7 @@ while True:
                 print(f"[{time.strftime('%H:%M:%S')}] *** Exit condition lost after being held for {held_duration:.2f}s. Resetting timer. ***")
                 detection_start_time = None
         
-        # --- Status Logging and Timing (Unchanged from your version) ---
+        # --- Status Logging and Timing ---
         processing_time = time.time() - t0
         sleep_time = CHECK_INTERVAL - processing_time
         total_cycle_time = processing_time + sleep_time if sleep_time > 0 else processing_time
